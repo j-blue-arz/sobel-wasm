@@ -58,7 +58,7 @@
             this.go = new Go();
         })();
 
-        WebAssembly.instantiateStreaming(fetch("convolve.wasm"), window.go.importObject).then(
+        WebAssembly.instantiateStreaming(fetch("sobel.wasm"), window.go.importObject).then(
             (obj) => {
                 window.go.run(obj.instance);
             }

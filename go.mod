@@ -1,3 +1,3 @@
-module github.com/j-blue-arz/wasm-intro/convolve
+module github.com/j-blue-arz/sobel
 
 go 1.19
