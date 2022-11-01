@@ -4,8 +4,6 @@ import (
 	"math"
 )
 
-type channelIndex int
-
 type numeric interface {
 	byte | float64
 }
@@ -25,6 +23,8 @@ func makeGrayImage(width, height int) canvasImage[float64] {
 func makeRGBAImage(width, height int) canvasImage[byte] {
 	return canvasImage[byte]{make([]byte, width*height*4), 4, width, height}
 }
+
+type channelIndex int
 
 func (image canvasImage[_]) index(row, col int, c channelIndex) int {
 	return (row*image.width+col)*image.numChannels + int(c)
