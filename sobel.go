@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image"
 	"math"
 )
 
@@ -20,10 +21,6 @@ func makeGrayImage(width, height int) canvasImage[float64] {
 	return canvasImage[float64]{make([]float64, width*height), 1, width, height}
 }
 
-func makeRGBAImage(width, height int) canvasImage[byte] {
-	return canvasImage[byte]{make([]byte, width*height*4), 4, width, height}
-}
-
 type channelIndex int
 
 func (image canvasImage[_]) index(row, col int, c channelIndex) int {
@@ -38,9 +35,12 @@ func (image canvasImage[pixelType]) set(row, col int, c channelIndex, value pixe
 	image.buffer[image.index(row, col, c)] = value
 }
 
-// The returned image has its size reduced by 2 in both directions.
-func sobelRGBA(img canvasImage[byte]) canvasImage[byte] {
-	grayImage := toGrayImage(img)
+// The returned image has its size reduced by 2 in both dimensions.
+func sobelRGBA(rgba image.RGBA) *image.RGBA {
+	width, height := rgba.Bounds().Dx(), rgba.Bounds().Dy()
+
+	sourceImage := canvasImage[byte]{rgba.Pix, 4, width, height}
+	grayImage := toGrayImage(sourceImage)
 	convolved, min, max := sobelGray(grayImage)
 	return toRGBAImage(convolved, min, max)
 }
@@ -109,14 +109,14 @@ func convolvePixel[pixelType numeric](img canvasImage[pixelType], kernel kernel,
 	return value
 }
 
-func toRGBAImage(grayImage canvasImage[float64], min float64, max float64) canvasImage[byte] {
-	result := makeRGBAImage(grayImage.width, grayImage.height)
+func toRGBAImage(grayImage canvasImage[float64], min float64, max float64) *image.RGBA {
+	result := image.NewRGBA(image.Rect(0, 0, grayImage.width, grayImage.height))
 	for pixel, value := range grayImage.buffer {
 		outValue := byte((value - min) / (max - min) * 255)
-		result.buffer[pixel*4] = outValue
-		result.buffer[pixel*4+1] = outValue
-		result.buffer[pixel*4+2] = outValue
-		result.buffer[pixel*4+3] = 255
+		result.Pix[pixel*4] = outValue
+		result.Pix[pixel*4+1] = outValue
+		result.Pix[pixel*4+2] = outValue
+		result.Pix[pixel*4+3] = 255
 	}
 	return result
 }

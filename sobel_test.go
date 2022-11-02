@@ -10,16 +10,9 @@ import (
 )
 
 func TestSobel(t *testing.T) {
-	rgba, _ := getImageFromFilePath("skyline.jpg")
+	sourceImage, _ := getImageFromFilePath("skyline.jpg")
 
-	width, height := rgba.Bounds().Max.X, rgba.Bounds().Max.Y
-
-	sourceImage := canvasImage[byte]{rgba.Pix, 4, width, height}
-
-	sobel := sobelRGBA(sourceImage)
-
-	resultRGBA := image.NewRGBA(image.Rect(0, 0, sobel.width, sobel.height))
-	resultRGBA.Pix = sobel.buffer
+	resultRGBA := sobelRGBA(*sourceImage)
 
 	result := image.NewGray(resultRGBA.Bounds())
 	draw.Draw(result, resultRGBA.Bounds(), resultRGBA, resultRGBA.Bounds().Min, draw.Src)
