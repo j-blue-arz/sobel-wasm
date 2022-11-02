@@ -2,60 +2,53 @@ package main
 
 import (
 	"image"
+	"image/color"
 	"math"
 )
 
-type numeric interface {
-	byte | float64
+// the buffer has size width*height
+type float64Image struct {
+	buffer []float64
+	width  int
+	height int
 }
 
-// the buffer has size width*height*numChannels.
-type canvasImage[pixelType numeric] struct {
-	buffer      []pixelType
-	numChannels int
-	width       int
-	height      int
+func makeGrayImage(width, height int) float64Image {
+	return float64Image{make([]float64, width*height), width, height}
 }
 
-func makeGrayImage(width, height int) canvasImage[float64] {
-	return canvasImage[float64]{make([]float64, width*height), 1, width, height}
+func (image float64Image) index(row, col int) int {
+	return (row*image.width + col)
 }
 
-type channelIndex int
-
-func (image canvasImage[_]) index(row, col int, c channelIndex) int {
-	return (row*image.width+col)*image.numChannels + int(c)
+func (image float64Image) get(row, col int) float64 {
+	return image.buffer[image.index(row, col)]
 }
 
-func (image canvasImage[pixelType]) get(row, col int, c channelIndex) pixelType {
-	return image.buffer[image.index(row, col, c)]
-}
-
-func (image canvasImage[pixelType]) set(row, col int, c channelIndex, value pixelType) {
-	image.buffer[image.index(row, col, c)] = value
+func (image float64Image) set(row, col int, value float64) {
+	image.buffer[image.index(row, col)] = value
 }
 
 // The returned image has its size reduced by 2 in both dimensions.
 func sobelRGBA(rgba image.RGBA) *image.RGBA {
-	width, height := rgba.Bounds().Dx(), rgba.Bounds().Dy()
-
-	sourceImage := canvasImage[byte]{rgba.Pix, 4, width, height}
-	grayImage := toGrayImage(sourceImage)
+	grayImage := toGrayImage(rgba)
 	convolved, min, max := sobelGray(grayImage)
 	return toRGBAImage(convolved, min, max)
 }
 
-func toGrayImage(img canvasImage[byte]) canvasImage[float64] {
-	grayImage := makeGrayImage(img.width, img.height)
-	for pixel := 0; pixel < len(grayImage.buffer); pixel++ {
-		colors := img.buffer[pixel*4 : pixel*4+3]
-		red, green, blue := colors[0], colors[1], colors[2]
-		grayImage.buffer[pixel] = float64(toGray(red, green, blue))
+func toGrayImage(rgba image.RGBA) float64Image {
+	width, height := rgba.Bounds().Dx(), rgba.Bounds().Dy()
+	grayImage := makeGrayImage(width, height)
+	for x := rgba.Bounds().Min.X; x < rgba.Bounds().Max.X; x++ {
+		for y := rgba.Bounds().Min.Y; y < rgba.Bounds().Max.Y; y++ {
+			red, green, blue, _ := rgba.At(x, y).RGBA()
+			grayImage.set(y, x, float64(toGray(red, green, blue)))
+		}
 	}
 	return grayImage
 }
 
-func toGray(red, green, blue byte) float64 {
+func toGray(red, green, blue uint32) float64 {
 	return 0.2989*float64(red) + 0.5870*float64(green) + 0.1140*float64(blue)
 }
 
@@ -77,7 +70,7 @@ var kernel_y = kernel{
 	-1.0, -2.0, -1.0,
 }
 
-func sobelGray(grayImage canvasImage[float64]) (canvasImage[float64], float64, float64) {
+func sobelGray(grayImage float64Image) (float64Image, float64, float64) {
 	width := grayImage.width - 2
 	height := grayImage.height - 2
 	convolved := makeGrayImage(width, height)
@@ -93,30 +86,30 @@ func sobelGray(grayImage canvasImage[float64]) (canvasImage[float64], float64, f
 			if max < value {
 				max = value
 			}
-			convolved.set(row-1, col-1, 0, value)
+			convolved.set(row-1, col-1, value)
 		}
 	}
 	return convolved, min, max
 }
 
-func convolvePixel[pixelType numeric](img canvasImage[pixelType], kernel kernel, row, col int) float64 {
+func convolvePixel(img float64Image, kernel kernel, row, col int) float64 {
 	var value float64
 	for x, kx := col-1, 2; x <= col+1; x, kx = x+1, kx-1 {
 		for y, ky := row-1, 2; y <= row+1; y, ky = y+1, ky-1 {
-			value += float64(img.get(y, x, 0)) * kernel.get(ky, kx)
+			value += float64(img.get(y, x)) * kernel.get(ky, kx)
 		}
 	}
 	return value
 }
 
-func toRGBAImage(grayImage canvasImage[float64], min float64, max float64) *image.RGBA {
+func toRGBAImage(grayImage float64Image, min float64, max float64) *image.RGBA {
 	result := image.NewRGBA(image.Rect(0, 0, grayImage.width, grayImage.height))
-	for pixel, value := range grayImage.buffer {
-		outValue := byte((value - min) / (max - min) * 255)
-		result.Pix[pixel*4] = outValue
-		result.Pix[pixel*4+1] = outValue
-		result.Pix[pixel*4+2] = outValue
-		result.Pix[pixel*4+3] = 255
+	for x := 0; x < grayImage.width; x++ {
+		for y := 0; y < grayImage.height; y++ {
+			value := grayImage.get(y, x)
+			outValue := byte((value - min) / (max - min) * 255)
+			result.Set(x, y, color.RGBA{outValue, outValue, outValue, 255})
+		}
 	}
 	return result
 }
