@@ -33,81 +33,82 @@ func (image float64Image) set(row, col int, value float64) {
 func sobelRGBA(rgba image.RGBA) *image.RGBA {
 	grayImage := toGrayImage(rgba)
 	convolved, min, max := sobelGray(grayImage)
-	return toRGBAImage(convolved, min, max)
+	return toRGBAImage(*convolved, min, max)
 }
 
-func toGrayImage(rgba image.RGBA) float64Image {
-	width, height := rgba.Bounds().Dx(), rgba.Bounds().Dy()
-	grayImage := makeGrayImage(width, height)
-	for x := rgba.Bounds().Min.X; x < rgba.Bounds().Max.X; x++ {
-		for y := rgba.Bounds().Min.Y; y < rgba.Bounds().Max.Y; y++ {
-			red, green, blue, _ := rgba.At(x, y).RGBA()
-			grayImage.set(y, x, float64(toGray(red, green, blue)))
+func toGrayImage(img image.RGBA) *image.Gray16 {
+	grayImage := image.NewGray16(img.Rect)
+	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
+		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
+			rgba := img.RGBAAt(x, y)
+			red, green, blue := rgba.R, rgba.G, rgba.B
+			grayImage.SetGray16(x, y, color.Gray16{uint16(toGray(red, green, blue))})
 		}
 	}
 	return grayImage
 }
 
-func toGray(red, green, blue uint32) float64 {
+func toGray(red, green, blue uint8) float64 {
 	return 0.2989*float64(red) + 0.5870*float64(green) + 0.1140*float64(blue)
 }
 
-type kernel [9]float64
+type kernel [9]int
 
-func (k kernel) get(row, col int) float64 {
+func (k kernel) get(row, col int) int {
 	return k[row*3+col]
 }
 
 var kernel_x = kernel{
-	1.0, 0.0, -1.0,
-	2.0, 0.0, -2.0,
-	1.0, 0.0, -1.0,
+	1, 0, -1,
+	2, 0, -2,
+	1, 0, -1,
 }
 
 var kernel_y = kernel{
-	1.0, 2.0, 1.0,
-	0.0, 0.0, 0.0,
-	-1.0, -2.0, -1.0,
+	1, 2, 1,
+	0, 0, 0,
+	-1, -2, -1,
 }
 
-func sobelGray(grayImage float64Image) (float64Image, float64, float64) {
-	width := grayImage.width - 2
-	height := grayImage.height - 2
-	convolved := makeGrayImage(width, height)
-	min, max := math.MaxFloat64, 0.0
-	for row := 1; row < grayImage.height-1; row++ {
-		for col := 1; col < grayImage.width-1; col++ {
-			value_x := convolvePixel(grayImage, kernel_x, row, col)
-			value_y := convolvePixel(grayImage, kernel_y, row, col)
-			value := math.Sqrt(value_x*value_x + value_y*value_y)
+func sobelGray(grayImage *image.Gray16) (*image.Gray16, uint16, uint16) {
+	width := grayImage.Bounds().Dx() - 2
+	height := grayImage.Bounds().Dy() - 2
+	convolved := image.NewGray16(image.Rect(0, 0, width, height))
+	min, max := uint16(math.MaxUint16), uint16(0)
+	for y := 1; y < grayImage.Bounds().Max.Y-1; y++ {
+		for x := 1; x < grayImage.Bounds().Max.X-1; x++ {
+			value_x := convolvePixel(*grayImage, kernel_x, y, x)
+			value_y := convolvePixel(*grayImage, kernel_y, y, x)
+			value := uint16(math.Sqrt(float64(value_x*value_x + value_y*value_y)))
 			if min > value {
 				min = value
 			}
 			if max < value {
 				max = value
 			}
-			convolved.set(row-1, col-1, value)
+			convolved.SetGray16(x-1, y-1, color.Gray16{value})
 		}
 	}
 	return convolved, min, max
 }
 
-func convolvePixel(img float64Image, kernel kernel, row, col int) float64 {
-	var value float64
+func convolvePixel(img image.Gray16, kernel kernel, row, col int) int {
+	var value int
 	for x, kx := col-1, 2; x <= col+1; x, kx = x+1, kx-1 {
 		for y, ky := row-1, 2; y <= row+1; y, ky = y+1, ky-1 {
-			value += float64(img.get(y, x)) * kernel.get(ky, kx)
+			value += int(img.Gray16At(x, y).Y) * kernel.get(ky, kx)
 		}
 	}
 	return value
 }
 
-func toRGBAImage(grayImage float64Image, min float64, max float64) *image.RGBA {
-	result := image.NewRGBA(image.Rect(0, 0, grayImage.width, grayImage.height))
-	for x := 0; x < grayImage.width; x++ {
-		for y := 0; y < grayImage.height; y++ {
-			value := grayImage.get(y, x)
-			outValue := byte((value - min) / (max - min) * 255)
+func toRGBAImage(img image.Gray16, min uint16, max uint16) *image.RGBA {
+	result := image.NewRGBA(img.Bounds())
+	valueRange := float64(max - min)
+	for y := 0; y < img.Bounds().Max.Y; y++ {
+		for x := 0; x < img.Bounds().Max.X; x++ {
+			value := img.Gray16At(x, y).Y
+			outValue := byte(float64(value-min) / valueRange * 255)
 			result.Set(x, y, color.RGBA{outValue, outValue, outValue, 255})
 		}
 	}
