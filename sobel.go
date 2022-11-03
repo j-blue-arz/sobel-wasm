@@ -6,29 +6,6 @@ import (
 	"math"
 )
 
-// the buffer has size width*height
-type float64Image struct {
-	buffer []float64
-	width  int
-	height int
-}
-
-func makeGrayImage(width, height int) float64Image {
-	return float64Image{make([]float64, width*height), width, height}
-}
-
-func (image float64Image) index(row, col int) int {
-	return (row*image.width + col)
-}
-
-func (image float64Image) get(row, col int) float64 {
-	return image.buffer[image.index(row, col)]
-}
-
-func (image float64Image) set(row, col int, value float64) {
-	image.buffer[image.index(row, col)] = value
-}
-
 // The returned image has its size reduced by 2 in both dimensions.
 func sobelRGBA(rgba image.RGBA) *image.RGBA {
 	grayImage := toGrayImage(rgba)
