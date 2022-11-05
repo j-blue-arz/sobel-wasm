@@ -6,13 +6,14 @@ import (
 	"image/jpeg"
 	"image/png"
 	"os"
+	"runtime"
 	"testing"
 )
 
 func TestSobel(t *testing.T) {
 	sourceImage, _ := getImageFromFilePath("skyline.jpg")
 
-	resultRGBA := sobelRGBA(*sourceImage)
+	resultRGBA := sobelRGBA(sourceImage)
 
 	result := image.NewGray(resultRGBA.Bounds())
 	draw.Draw(result, resultRGBA.Bounds(), resultRGBA, resultRGBA.Bounds().Min, draw.Src)
@@ -30,6 +31,14 @@ func TestSobel(t *testing.T) {
 				t.Fatalf("The result image differs from the expected image at (%d, %d). Check result.jpg if it is visually OK, then rename it to expected.jpg", x, y)
 			}
 		}
+	}
+}
+
+func BenchmarkSobel(b *testing.B) {
+	sourceImage, _ := getImageFromFilePath("skyline.jpg")
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		runtime.KeepAlive(sobelRGBA(sourceImage))
 	}
 }
 
