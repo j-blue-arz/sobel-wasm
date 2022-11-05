@@ -54,9 +54,7 @@ func sobelGray(grayImage *image.Gray16) (*image.Gray16, uint16, uint16) {
 	min, max := uint16(math.MaxUint16), uint16(0)
 	for y := 1; y < grayImage.Bounds().Max.Y-1; y++ {
 		for x := 1; x < grayImage.Bounds().Max.X-1; x++ {
-			value_x := convolvePixel(grayImage, kernel_x, y, x)
-			value_y := convolvePixel(grayImage, kernel_y, y, x)
-			value := uint16(math.Sqrt(float64(value_x*value_x + value_y*value_y)))
+			value := convolvePixel(grayImage, x, y)
 			if min > value {
 				min = value
 			}
@@ -69,14 +67,17 @@ func sobelGray(grayImage *image.Gray16) (*image.Gray16, uint16, uint16) {
 	return convolved, min, max
 }
 
-func convolvePixel(img *image.Gray16, kernel kernel, row, col int) int {
-	var value int
-	for x, kx := col-1, 2; x <= col+1; x, kx = x+1, kx-1 {
-		for y, ky := row-1, 2; y <= row+1; y, ky = y+1, ky-1 {
-			value += int(img.Gray16At(x, y).Y) * kernel.get(kx, ky)
+func convolvePixel(img *image.Gray16, x, y int) uint16 {
+	var value_x int
+	var value_y int
+	for ix, kx := x-1, 2; ix <= x+1; ix, kx = ix+1, kx-1 {
+		for iy, ky := y-1, 2; iy <= y+1; iy, ky = iy+1, ky-1 {
+			imgValue := int(img.Gray16At(ix, iy).Y)
+			value_x += imgValue * kernel_x.get(kx, ky)
+			value_y += imgValue * kernel_y.get(kx, ky)
 		}
 	}
-	return value
+	return uint16(math.Sqrt(float64(value_x*value_x + value_y*value_y)))
 }
 
 func toRGBAImage(img *image.Gray16, min uint16, max uint16) *image.RGBA {
@@ -85,7 +86,7 @@ func toRGBAImage(img *image.Gray16, min uint16, max uint16) *image.RGBA {
 	for y := 0; y < img.Bounds().Max.Y; y++ {
 		for x := 0; x < img.Bounds().Max.X; x++ {
 			value := img.Gray16At(x, y).Y
-			outValue := byte(float64(value-min) / valueRange * 255)
+			outValue := uint8(float64(value-min) / valueRange * 255)
 			result.Set(x, y, color.RGBA{outValue, outValue, outValue, 255})
 		}
 	}
