@@ -2,23 +2,27 @@
 
 package main
 
+import "bytes"
 import "syscall/js"
 import "image"
+import _ "image/jpeg"
+import "image/png"
 
 func sobelOperator(this js.Value, args []js.Value) interface{} {
-	inputBuffer := make([]byte, args[0].Get("length").Int())
+	inputBuffer := make([]byte, args[0].Get("byteLength").Int())
 	js.CopyBytesToGo(inputBuffer, args[0])
-	width := args[1].Int()
-	height := args[2].Int()
 
-	inputImage := image.NewRGBA(image.Rect(0, 0, width, height))
-	inputImage.Pix = inputBuffer
+	img, _, _ := image.Decode(bytes.NewReader(inputBuffer))
 
-	resultImage := sobelRGBA(*inputImage)
+	resultImage := sobelRGBA(img)
 
-	size := len(resultImage.Pix)
-	result := js.Global().Get("Uint8ClampedArray").New(size)
-	js.CopyBytesToJS(result, resultImage.Pix)
+	var outputBuffer bytes.Buffer
+	png.Encode(&outputBuffer, resultImage) // todo: check error?
+
+	outputBytes := outputBuffer.Bytes()
+	size := len(outputBytes)
+	result := js.Global().Get("Uint8Array").New(size)
+	js.CopyBytesToJS(result, outputBytes)
 
 	return result
 }

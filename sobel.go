@@ -7,26 +7,21 @@ import (
 )
 
 // The returned image has its size reduced by 2 in both dimensions.
-func sobelRGBA(rgba *image.RGBA) *image.RGBA {
+func sobelRGBA(rgba image.Image) image.Image {
 	grayImage := toGrayImage(rgba)
 	convolved, min, max := sobelGray(grayImage)
 	return toRGBAImage(convolved, min, max)
 }
 
-func toGrayImage(img *image.RGBA) *image.Gray16 {
-	grayImage := image.NewGray16(img.Rect)
+func toGrayImage(img image.Image) *image.Gray {
+	grayImage := image.NewGray(img.Bounds())
 	for y := img.Bounds().Min.Y; y < img.Bounds().Max.Y; y++ {
 		for x := img.Bounds().Min.X; x < img.Bounds().Max.X; x++ {
-			rgba := img.RGBAAt(x, y)
-			red, green, blue := rgba.R, rgba.G, rgba.B
-			grayImage.SetGray16(x, y, color.Gray16{uint16(toGray(red, green, blue))})
+			grayColor := color.GrayModel.Convert(img.At(x, y)).(color.Gray)
+			grayImage.SetGray(x, y, grayColor)
 		}
 	}
 	return grayImage
-}
-
-func toGray(red, green, blue uint8) float64 {
-	return 0.2989*float64(red) + 0.5870*float64(green) + 0.1140*float64(blue)
 }
 
 type kernel [9]int
@@ -47,7 +42,7 @@ var kernel_y = kernel{
 	-1, -2, -1,
 }
 
-func sobelGray(grayImage *image.Gray16) (*image.Gray16, uint16, uint16) {
+func sobelGray(grayImage *image.Gray) (*image.Gray16, uint16, uint16) {
 	width := grayImage.Bounds().Dx() - 2
 	height := grayImage.Bounds().Dy() - 2
 	convolved := image.NewGray16(image.Rect(0, 0, width, height))
@@ -67,12 +62,12 @@ func sobelGray(grayImage *image.Gray16) (*image.Gray16, uint16, uint16) {
 	return convolved, min, max
 }
 
-func convolvePixel(img *image.Gray16, x, y int) uint16 {
+func convolvePixel(img *image.Gray, x, y int) uint16 {
 	var value_x int
 	var value_y int
 	for ix, kx := x-1, 2; ix <= x+1; ix, kx = ix+1, kx-1 {
 		for iy, ky := y-1, 2; iy <= y+1; iy, ky = iy+1, ky-1 {
-			imgValue := int(img.Gray16At(ix, iy).Y)
+			imgValue := int(img.GrayAt(ix, iy).Y)
 			value_x += imgValue * kernel_x.get(kx, ky)
 			value_y += imgValue * kernel_y.get(kx, ky)
 		}

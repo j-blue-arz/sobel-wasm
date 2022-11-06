@@ -49,8 +49,8 @@
             <input type="button" id="compute" value="apply sobel" />
         </div>
         <div class="output">
-            <img id="sourceImage" src="skyline.jpg" />
-            <canvas id="targetCanvas"></canvas>
+            <img id="sourceImage"/>
+            <img id="targetImage"/>
         </div>
     </div>
     <script>
@@ -66,49 +66,50 @@
 
         const filePicker = document.getElementById("filePicker");
         const sourceImage = document.getElementById("sourceImage");
-        const canvas = document.getElementById("targetCanvas");
+        const targetImage = document.getElementById("targetImage");
         const computeButton = document.getElementById("compute");
+        let input = null;
+        
+        initializeImage()
 
-        computeButton.onclick = function (event) {
-            const sourceImageData = retrieveImageData();
-            const imageBuffer = window.sobelOperator(sourceImageData.data, sourceImage.width, sourceImage.height);
-            drawImageBuffer(imageBuffer);
-        };
-
-        function retrieveImageData() {
-            let sourceCanvas = new OffscreenCanvas(sourceImage.width, sourceImage.height);
-
-            var sourceContext = sourceCanvas.getContext("2d");
-            sourceContext.drawImage(sourceImage, 0, 0);
-
-            return sourceContext.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-        }
-
-        function drawImageBuffer(imageBuffer) {
-            const newWidth = sourceImage.width - 2;
-            const newHeight = sourceImage.height - 2;
-
-            canvas.width = newWidth;
-            canvas.height = newHeight
-            var context = canvas.getContext("2d");
-
-            let newImageData = new ImageData(imageBuffer, newWidth, newHeight);
-            context.putImageData(newImageData, 0, 0)
-        }
+        computeButton.onclick = () => runSobel();
 
         filePicker.addEventListener("change", handleFiles, false);
 
-        function handleFiles() {
+        async function handleFiles() {
             if (this.files.length) {
                 const file = this.files[0];
-                reader = new FileReader();
-                reader.onload = (e) => { sourceImage.src = e.target.result; };
-                reader.readAsDataURL(file);
+                sourceImage.src = URL.createObjectURL(file);
+                const arrayBuffer = await file.arrayBuffer();
+                input = new Uint8Array(arrayBuffer);
 
-                canvas.width = 0;;
-                canvas.height = 0;
+                runSobel();
             }
         }
+
+        function runSobel() {
+            const result = window.sobelOperator(input);
+            targetImage.src = URL.createObjectURL(new Blob([result]));
+        }
+
+        function initializeImage() {
+            const req = new XMLHttpRequest();
+            req.open("GET", "/skyline.jpg", true);
+            req.responseType = "blob";
+
+            req.onload = async (event) => {
+                const blob = req.response;
+                if (blob) {
+                    sourceImage.src = URL.createObjectURL(blob);
+                    const arrayBuffer = await blob.arrayBuffer();
+                    input = new Uint8Array(arrayBuffer);
+                }
+            };
+
+            req.send(null);
+        }
+
+
     </script>
 </body>
 
