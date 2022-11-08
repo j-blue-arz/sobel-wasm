@@ -14,12 +14,12 @@ func sobelOperator(this js.Value, args []js.Value) interface{} {
 
 	img, _, _ := image.Decode(bytes.NewReader(inputBuffer))
 
-	resultImage := sobelRGBA(img)
+	resultImage := sobel(img)
 
 	var outputBuffer bytes.Buffer
-	png.Encode(&outputBuffer, resultImage) // todo: check error?
-
+	png.Encode(&outputBuffer, resultImage)
 	outputBytes := outputBuffer.Bytes()
+
 	size := len(outputBytes)
 	result := js.Global().Get("Uint8Array").New(size)
 	js.CopyBytesToJS(result, outputBytes)

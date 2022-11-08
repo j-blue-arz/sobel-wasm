@@ -7,7 +7,7 @@ import (
 )
 
 // The returned image has its size reduced by 2 in both dimensions.
-func sobelRGBA(rgba image.Image) image.Image {
+func sobel(rgba image.Image) image.Image {
 	grayImage := toGrayImage(rgba)
 	convolved, min, max := sobelGray(grayImage)
 	return toRGBAImage(convolved, min, max)

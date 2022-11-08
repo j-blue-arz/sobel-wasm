@@ -13,7 +13,7 @@ import (
 func TestSobel(t *testing.T) {
 	sourceImage, _ := getImageFromFilePath("skyline.jpg")
 
-	resultRGBA := sobelRGBA(sourceImage)
+	resultRGBA := sobel(sourceImage)
 
 	result := image.NewGray(resultRGBA.Bounds())
 	draw.Draw(result, resultRGBA.Bounds(), resultRGBA, resultRGBA.Bounds().Min, draw.Src)
@@ -38,7 +38,7 @@ func BenchmarkSobel(b *testing.B) {
 	sourceImage, _ := getImageFromFilePath("skyline.jpg")
 	b.ResetTimer()
 	for n := 0; n < b.N; n++ {
-		runtime.KeepAlive(sobelRGBA(sourceImage))
+		runtime.KeepAlive(sobel(sourceImage))
 	}
 }
 

@@ -54,13 +54,11 @@
         </div>
     </div>
     <script>
-        (() => {
-            this.go = new Go();
-        })();
+        const go = new window.Go();
 
-        WebAssembly.instantiateStreaming(fetch("sobel.wasm"), window.go.importObject).then(
+        WebAssembly.instantiateStreaming(fetch("sobel.wasm"), go.importObject).then(
             (obj) => {
-                window.go.run(obj.instance);
+                go.run(obj.instance);
             }
         );
 
@@ -74,9 +72,9 @@
 
         computeButton.onclick = () => runSobel();
 
-        filePicker.addEventListener("change", handleFiles, false);
+        filePicker.addEventListener("change", handleFileChange, false);
 
-        async function handleFiles() {
+        async function handleFileChange() {
             if (this.files.length) {
                 const file = this.files[0];
                 sourceImage.src = URL.createObjectURL(file);
